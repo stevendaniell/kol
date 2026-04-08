@@ -21,7 +21,12 @@ public class UserController {
     @PostMapping("/login")
     public Map<String,Object> login(@RequestBody Map<String,String> body) {
         return urep.findByUsername(body.get("username")).filter(u->u.getPassword().equals(body.get("password")))
-            .map(u->Map.of("userId",u.getId(),"role",u.getRole()))
+            .map(u -> {
+                Map<String, Object> result = new HashMap<>();
+                result.put("userId", u.getId());
+                result.put("role", u.getRole());
+                return result;
+            })
             .orElseThrow(()->new RuntimeException("Invalid"));
     }
     @GetMapping("/{id}") public User get(@PathVariable Long id) { return urep.findById(id).orElseThrow(); }

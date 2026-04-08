@@ -1,2 +1,47 @@
-<!DOCTYPE html><html><head><link rel="stylesheet" href="style.css"></head>
-<body><div class="container"><h1>Dashboard</h1><p>Welcome, <span id="user-role"></span></p><div id="sessions-list"></div></div><script>document.getElementById('user-role').textContent = localStorage.getItem('role');</script><script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div class="container">
+		<div class="card">
+			<h1>Dashboard</h1>
+			<p>Logged in as: <span id="user-role"></span></p>
+			<button id="logout-btn">Logout</button>
+		</div>
+
+		<div class="card">
+			<h2>Courses</h2>
+			<p>Demo courses are shown automatically if no tutor courses exist yet.</p>
+			<div id="courses-list" class="grid"></div>
+		</div>
+
+		<div class="card hidden" id="tutor-tools">
+			<h2>Tutor Course Management</h2>
+			<input id="course-name" placeholder="Course name (e.g. React Basics)">
+			<button id="create-course-btn">Create Course</button>
+			<div id="my-courses"></div>
+		</div>
+
+		<div class="card">
+			<h2>Live Meet</h2>
+			<button id="start-meet-btn">Start Live Meet</button>
+			<p id="meet-link-wrap" class="hidden">Meeting Link: <a id="meet-link" href="#" target="_blank"></a></p>
+		</div>
+
+		<div class="card">
+			<h2>Message Panel</h2>
+			<div id="msg-list" class="chat-box"></div>
+			<input id="msg-input" placeholder="Type your message">
+			<button id="send-msg-btn">Send Message</button>
+		</div>
+
+		<div class="card">
+			<h2>Sessions</h2>
+			<div id="sessions-list"></div>
+		</div>
+	</div>
+	<script src="app.js"></script>
+</body>
+</html>

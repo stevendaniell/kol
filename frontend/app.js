@@ -5,14 +5,16 @@ const currentPage = window.location.pathname.split("/").pop() || "index.html";
 // Helpers
 const $ = id => document.getElementById(id);
 const checkAuth = () => { if (!auth.userId) window.location.href = "index.html"; };
-const nextPageForRole = role => role === "TUTOR" ? "dashboard.html" : "catalog.html";
+const nextPageForRole = () => "dashboard.html";
 const goToNextPage = role => { window.location.href = nextPageForRole(role); };
 
 // API Calls
 const call = async (url, opts = {}) => {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  if (res.status === 204) return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 };
 
 // Auth Page Logic
@@ -82,6 +84,103 @@ if (currentPage === "booking.html") {
 // Dashboard
 if (currentPage === "dashboard.html") {
   checkAuth();
+  if ($("user-role")) $("user-role").textContent = auth.role;
+
+  if ($("logout-btn")) {
+    $("logout-btn").onclick = () => {
+      localStorage.clear();
+      window.location.href = "index.html";
+    };
+  }
+
+  const loadCourses = async () => {
+    try {
+      const courses = await call(`${API}/skills/all`);
+      if ($("courses-list")) {
+        $("courses-list").innerHTML = courses.map(c => `
+          <div class="card">
+            <h3>${c.skill}</h3>
+            <p>Tutor: ${c.tutorName} | ⭐ ${Number(c.tutorRating).toFixed(1)}</p>
+            <div class="row">
+              ${auth.role === "STUDENT" && Number(c.tutorId) > 0 ? `<button onclick="window.location.href='booking.html?tutorId=${c.tutorId}&skill=${encodeURIComponent(c.skill)}'">Book</button>` : ""}
+              ${auth.role === "TUTOR" && Number(c.tutorId) === Number(auth.userId) ? `<button onclick="deleteCourse(${c.id})">Delete</button>` : ""}
+            </div>
+          </div>
+        `).join("");
+      }
+    } catch (err) {
+      if ($("courses-list")) $("courses-list").innerHTML = "<p>Failed to load courses</p>";
+    }
+  };
+
+  const loadMyCourses = async () => {
+    if (auth.role !== "TUTOR" || !$("my-courses")) return;
+    const mine = await call(`${API}/skills/tutor/${auth.userId}`);
+    $("my-courses").innerHTML = mine.length ? mine.map(c => `
+      <div class="row">
+        <span>${c.skillName}</span>
+        <button onclick="deleteCourse(${c.id})">Delete</button>
+      </div>
+    `).join("") : "<p>No courses yet</p>";
+  };
+
+  window.deleteCourse = async id => {
+    await call(`${API}/skills/${id}?tutorId=${auth.userId}`, { method: "DELETE" });
+    await loadCourses();
+    await loadMyCourses();
+  };
+
+  if (auth.role === "TUTOR" && $("tutor-tools")) {
+    $("tutor-tools").classList.remove("hidden");
+    if ($("create-course-btn")) {
+      $("create-course-btn").onclick = async () => {
+        const skillName = $("course-name").value.trim();
+        if (!skillName) return alert("Enter course name");
+        await call(`${API}/skills/create`, { method: "POST", body: JSON.stringify({ skillName, tutorId: String(auth.userId) }) });
+        $("course-name").value = "";
+        await loadCourses();
+        await loadMyCourses();
+      };
+    }
+  }
+
+  if ($("start-meet-btn")) {
+    $("start-meet-btn").onclick = () => {
+      const room = `kolher-${auth.role.toLowerCase()}-${auth.userId}-${Date.now()}`;
+      const link = `https://meet.jit.si/${room}`;
+      $("meet-link").href = link;
+      $("meet-link").textContent = link;
+      $("meet-link-wrap").classList.remove("hidden");
+      window.open(link, "_blank");
+    };
+  }
+
+  const loadMessages = async () => {
+    if (!$("msg-list")) return;
+    const msgs = await call(`${API}/messages`);
+    $("msg-list").innerHTML = msgs.map(m => `
+      <div class="msg-item">
+        <div><strong>${m.senderRole}</strong> #${m.senderId}</div>
+        <div>${m.content}</div>
+        <div class="muted">${(m.createdAt || "").replace('T', ' ')}</div>
+      </div>
+    `).join("");
+    $("msg-list").scrollTop = $("msg-list").scrollHeight;
+  };
+
+  if ($("send-msg-btn")) {
+    $("send-msg-btn").onclick = async () => {
+      const content = $("msg-input").value.trim();
+      if (!content) return;
+      await call(`${API}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ senderId: String(auth.userId), senderRole: auth.role, content })
+      });
+      $("msg-input").value = "";
+      await loadMessages();
+    };
+  }
+
   const loadSessions = async () => {
     const sessions = await call(`${API}/sessions/user/${auth.userId}`);
     $("sessions-list").innerHTML = sessions.map(s => `
@@ -100,5 +199,10 @@ if (currentPage === "dashboard.html") {
     await call(`${API}/feedback/submit`, { method: "POST", body: JSON.stringify({ sessionId: id, studentId: auth.userId, rating, comments: "Great session!" }) });
     alert("Feedback submitted!"); loadSessions();
   };
+  loadCourses();
+  loadMyCourses();
+  loadMessages();
+  setInterval(loadCourses, 4000);
+  setInterval(loadMessages, 4000);
   loadSessions();
 }

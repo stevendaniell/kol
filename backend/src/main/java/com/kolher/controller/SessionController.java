@@ -1,4 +1,4 @@
-cleapackage com.kolher.controller;
+package com.kolher.controller;
 import com.kolher.model.Session;
 import com.kolher.repository.SessionRepository;
 import org.springframework.web.bind.annotation.*;
